@@ -1,7 +1,8 @@
 name: Ollama AI Code Update
 
 on:
-  workflow_dispatch: # Handmatig starten via Actions tab
+  push:
+    branches: [ "actions-opzet" ]
 
 jobs:
   update-code:
