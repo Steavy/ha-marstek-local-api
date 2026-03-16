@@ -2,54 +2,72 @@ import os
 import requests
 import pdfplumber
 import ollama
-
-def extract_api_info(pdf_path):
-    text = ""
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text += page.extract_text()
-    return text
+import sys
 
 def main():
     # 1. Download PDF
     pdf_url = os.getenv("PDF_URL")
+    print(f"Downloading PDF from {pdf_url}...")
     r = requests.get(pdf_url)
-    with open("MarstekDeviceOpenApi.pdf", "wb") as f:
+    with open("api_rev2.pdf", "wb") as f:
         f.write(r.content)
     
-    # 2. Extract tekst
-    api_spec = extract_api_info("MarstekDeviceOpenApi.pdf")
+    # 2. Vind het juiste bestand
+    # We zoeken naar de plek waar de sensoren of definities staan. 
+    # In de Marstek Local API is dit vaak 'marstek_local_api/marstek_api.py' 
+    # of vergelijkbaar. We proberen de meest logische kandidaat:
+    possible_paths = [
+        "marstek_local_api/marstek_api.py",
+        "custom_components/marstek_local/const.py",
+        "marstek_api.py"
+    ]
     
-    # 3. Lees de huidige API code (bijv. de sensor mapping)
-    file_path = "custom_components/marstek_local/const.py" # Pas aan naar behoefte
+    file_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            file_path = path
+            break
+    
+    if not file_path:
+        print("FOUT: Kon geen bronbestand vinden om te updaten!")
+        print(f"Huidige bestanden in directory: {os.listdir('.')}")
+        sys.exit(1)
+
+    print(f"Bestand gevonden: {file_path}. AI analyse start nu...")
+
+    # 3. Extract tekst uit PDF
+    text = ""
+    with pdfplumber.open("api_rev2.pdf") as pdf:
+        for page in pdf.pages:
+            text += page.extract_text()
+    
+    # 4. Lees huidige code
     with open(file_path, "r") as f:
         current_code = f.read()
 
-    # 4. Vraag Llama 3 om de code te updaten
+    # 5. Llama 3 Prompt
     prompt = f"""
-    You are an expert Python developer for Home Assistant integrations.
-    Compare the following Marstek API Rev 2 specification with the current Python code.
-    Update the Python code to match the new specification (add new fields, fix registers).
+    Update the following Python code based on the Marstek API Rev 2 specs.
+    Focus on adding new registers or changing existing ones found in the PDF text.
     
-    API SPECIFICATION:
-    {api_spec[:4000]} # Beperk lengte voor context window
+    PDF DATA:
+    {text[:3000]}
     
-    CURRENT CODE:
+    CURRENT PYTHON CODE:
     {current_code}
     
-    Only return the updated Python code. No explanations.
+    Return ONLY the full updated Python code.
     """
 
     response = ollama.chat(model='llama3.2:3b', messages=[
         {'role': 'user', 'content': prompt},
     ])
 
-    updated_code = response['message']['content']
-
-    # 5. Schrijf wijzigingen terug
+    # 6. Schrijf terug
     with open(file_path, "w") as f:
-        f.write(updated_code)
-    print("Code succesvol bijgewerkt door Llama 3.")
+        f.write(response['message']['content'])
+    
+    print("Code succesvol geüpdatet.")
 
 if __name__ == "__main__":
     main()
