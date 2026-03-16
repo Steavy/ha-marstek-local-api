@@ -1,0 +1,46 @@
+name: Ollama AI Code Update
+
+on:
+  workflow_dispatch: # Handmatig starten via Actions tab
+
+jobs:
+  update-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          # Start Ollama op de achtergrond
+          ollama serve & 
+          sleep 10 # Wacht tot de server is opgestart
+
+      - name: Pull Llama 3 Model
+        run: |
+          # We gebruiken de 3b versie omdat deze sneller is op CPU
+          ollama pull llama3.2:3b 
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+
+      - name: Run AI Agent
+        run: python scripts/agent.py
+        env:
+          PDF_URL: "https://static-eu.marstekcloud.com/ems/resource/agreement/MarstekDeviceOpenApi.pdf"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "feat: update to Marstek API Rev 2 using Llama 3"
+          branch: feature/marstek-rev2-update
+          title: "Update API via Local Ollama (Llama 3)"
+          body: "Gegenereerd door Llama 3 op basis van de Rev 2 PDF specificaties."
