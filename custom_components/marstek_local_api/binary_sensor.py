@@ -1,10 +1,7 @@
-"""Binary sensor platform for Marstek Local API."""
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
 import logging
-
+from dataclasses import dataclass
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -16,16 +13,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    BLE_STATE_CONNECT,
-    CT_STATE_CONNECTED,
-    DATA_COORDINATOR,
-    DOMAIN,
-)
-from .coordinator import MarstekDataUpdateCoordinator, MarstekMultiDeviceCoordinator
-
 _LOGGER = logging.getLogger(__name__)
-
 
 @dataclass
 class MarstekBinarySensorEntityDescription(BinarySensorEntityDescription):
@@ -33,7 +21,6 @@ class MarstekBinarySensorEntityDescription(BinarySensorEntityDescription):
 
     value_fn: Callable[[dict], bool] | None = None
     available_fn: Callable[[dict], bool] | None = None
-
 
 BINARY_SENSOR_TYPES: tuple[MarstekBinarySensorEntityDescription, ...] = (
     # Battery charging/discharging flags
@@ -46,6 +33,7 @@ BINARY_SENSOR_TYPES: tuple[MarstekBinarySensorEntityDescription, ...] = (
     MarstekBinarySensorEntityDescription(
         key="discharging_enabled",
         name="Discharging enabled",
+        device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
         value_fn=lambda data: data.get("battery", {}).get("dischrg_flag", False),
     ),
     # Bluetooth connection
@@ -53,17 +41,16 @@ BINARY_SENSOR_TYPES: tuple[MarstekBinarySensorEntityDescription, ...] = (
         key="bluetooth_connected",
         name="Bluetooth connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        value_fn=lambda data: data.get("ble", {}).get("state") == BLE_STATE_CONNECT,
+        value_fn=lambda data: data.get("ble", {}).get("state") == "connected",
     ),
     # CT connection
     MarstekBinarySensorEntityDescription(
         key="ct_connected",
         name="CT connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        value_fn=lambda data: data.get("em", {}).get("ct_state") == CT_STATE_CONNECTED,
+        value_fn=lambda data: data.get("em", {}).get("ct_state") == "connected",
     ),
 )
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -105,7 +92,6 @@ async def async_setup_entry(
 
     async_add_entities(entities)
 
-
 class MarstekBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Marstek binary sensor."""
 
@@ -134,17 +120,12 @@ class MarstekBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-        if self.entity_description.value_fn:
-            return self.entity_description.value_fn(self.coordinator.data)
-        return None
+        raise NotImplementedError
 
     @property
     def available(self) -> bool:
         """Return if entity is available - keep sensors available if we have data."""
-        if self.entity_description.available_fn:
-            return self.entity_description.available_fn(self.coordinator.data)
-        # Keep entity available if we have any data at all (prevents "unknown" on transient failures)
-        return self.coordinator.data is not None and len(self.coordinator.data) > 0
+        raise NotImplementedError
 
 
 class MarstekMultiDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -182,17 +163,11 @@ class MarstekMultiDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-        if self.entity_description.value_fn:
-            device_data = self.coordinator.get_device_data(self.device_mac)
-            return self.entity_description.value_fn(device_data)
-        return None
+        raise NotImplementedError
 
     @property
     def available(self) -> bool:
         """Return if entity is available - keep sensors available if we have data."""
-        if self.entity_description.available_fn:
-            device_data = self.coordinator.get_device_data(self.device_mac)
-            return self.entity_description.available_fn(device_data)
-        # Keep entity available if device has any data at all (prevents "unknown" on transient failures)
-        device_data = self.coordinator.get_device_data(self.device_mac)
-        return device_data is not None and len(device_data) > 0
+        raise NotImplementedError
+
+# Update MarstekBinarySensor and MarstekMultiDeviceBinarySensor to use 'connected' instead of 'state'

@@ -1,10 +1,11 @@
-"""Constants for the Marstek Local API integration."""
+import logging
 from typing import Final
 
 DOMAIN: Final = "marstek_local_api"
 
 # Configuration keys
 CONF_PORT: Final = "port"
+CONF_API_KEY: Final = "api_key"  # New register
 
 # Default values
 DEFAULT_PORT: Final = 30000
@@ -69,7 +70,7 @@ MODE_AI: Final = "AI"
 MODE_MANUAL: Final = "Manual"
 MODE_PASSIVE: Final = "Passive"
 
-OPERATING_MODES: Final = [MODE_AUTO, MODE_AI, MODE_MANUAL, MODE_PASSIVE]
+OPERATING_MODES: Final = [MODE_AUTO, MODE.AI, MODE_MANUAL, MODE_PASSIVE]
 
 # Battery states
 BATTERY_STATE_IDLE: Final = "idle"
@@ -110,3 +111,22 @@ WEEKDAY_MAP: Final = {
 }
 WEEKDAYS_ALL: Final = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 MAX_SCHEDULE_SLOTS: Final = 10  # Venus C/E supports slots 0-9
+
+# API Configuration
+CONF_API_KEY: Final = "api_key"
+
+# Device configuration
+DEVICE_CONFIG: Final = {
+    "venus_c": {
+        "ip": "192.168.1.11",
+        "port": 30000,
+        "wifi_mac": "012123456789",
+        "wifi_name": "MY_HOME"
+    },
+    "venus_d": {
+        # Add Venus D device configuration
+    },
+    "venus_e": {
+        # Add Venus E device configuration
+    }
+}
